@@ -31,7 +31,6 @@ jobs:
         run: |
           pip install buildozer
           pip install "cython<3.0.0"
-          pip install "jnius>=1.4.0"
 
       - name: Build APK with Buildozer
         run: |
