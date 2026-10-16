@@ -79,7 +79,21 @@ class DBConfigScreen(BoxLayout):
 
         self.add_widget(row_input)
 
-        # Кнопка «Создать новую» + Продолжить + Выход
+        # Вторая строка: подсказки
+        row_hint = BoxLayout(
+            orientation='horizontal',
+            size_hint_y=None, height=dp(30),
+            spacing=dp(6),
+        )
+        row_hint.add_widget(ModernButton(
+            text='📍 Путь по умолчанию',
+            color='info',
+            size_hint=(1, 1),
+            on_release=lambda *_: self._fill_default_path(),
+        ))
+        self.add_widget(row_hint)
+
+        # Кнопки действий
         row_buttons = BoxLayout(
             size_hint_y=None, height=dp(42),
             spacing=dp(8),
@@ -111,6 +125,19 @@ class DBConfigScreen(BoxLayout):
         )
         self.add_widget(self.info_lbl)
 
+    # ─── Заполнить путь по умолчанию ───
+
+    def _fill_default_path(self):
+        """Заполнить поле путём по умолчанию (папка приложения)."""
+        try:
+            from shared.config import get_app_dir, DEFAULT_DB_NAME
+            app_dir = get_app_dir()
+            default_path = os.path.join(app_dir, DEFAULT_DB_NAME)
+            self.path_inp.text = default_path
+            self.info_lbl.text = f'Путь по умолчанию: {default_path}'
+        except Exception as e:
+            self._show_error(f'Ошибка: {e}')
+
     # ─── Выбор файла БД ───
 
     def _browse(self):
@@ -118,15 +145,18 @@ class DBConfigScreen(BoxLayout):
         if platform == 'android':
             try:
                 from plyer import filechooser
+                print('[db_config] открываю filechooser...')
                 filechooser.open_file(
                     on_selection=self._on_android_file_selected,
                     filters=[("*.db", "SQLite DB"), ("*.*", "All files")],
                 )
                 self.info_lbl.text = 'Выберите файл БД...'
             except Exception as e:
+                import traceback
+                traceback.print_exc()
                 self._show_error(
                     f'Не удалось открыть диалог:\n{e}\n\n'
-                    'Введите путь вручную.'
+                    'Нажмите «Путь по умолчанию» или «Создать новую».'
                 )
             return
 
@@ -147,10 +177,13 @@ class DBConfigScreen(BoxLayout):
             self._show_error(f'Ошибка выбора файла:\n{e}')
 
     def _on_android_file_selected(self, paths):
+        """Callback от plyer на Android."""
+        print(f'[db_config] on_android_file_selected: {paths!r}')
         if not paths:
-            self.info_lbl.text = ''
+            self.info_lbl.text = 'Файл не выбран'
             return
         path = paths[0]
+        print(f'[db_config] выбран путь: {path!r}')
         self.path_inp.text = path
         self.info_lbl.text = f'Выбран: {os.path.basename(path)}'
 
@@ -161,6 +194,8 @@ class DBConfigScreen(BoxLayout):
         try:
             new_path = create_default_db()
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             self._show_error(f'Ошибка создания БД:\n{e}')
             return
 
@@ -187,13 +222,16 @@ class DBConfigScreen(BoxLayout):
             try:
                 new_path = create_default_db()
             except Exception as e:
+                import traceback
+                traceback.print_exc()
                 self._show_error(f'Ошибка создания БД:\n{e}')
                 return
 
             if not new_path:
                 self._show_error(
                     'Не удалось создать базу данных по умолчанию.\n\n'
-                    'Нажмите «Создать новую» или выберите файл кнопкой «Обзор».'
+                    'Нажмите «Путь по умолчанию», затем «Создать новую», '
+                    'или выберите существующий файл кнопкой «Обзор».'
                 )
                 return
 
@@ -221,8 +259,7 @@ class DBConfigScreen(BoxLayout):
         self._show_error(
             f'Не удалось использовать путь:\n{p}\n\n'
             'Файл не существует или недоступен.\n'
-            'Нажмите «Обзор» и выберите существующий файл БД,\n'
-            'или нажмите «Создать новую».'
+            'Нажмите «Путь по умолчанию» или «Создать новую».'
         )
 
     # ─── Сообщения ───
