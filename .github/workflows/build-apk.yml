@@ -8,32 +8,15 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    container:
+      image: kivy/buildozer:latest
+      options: --user root
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            git zip unzip openjdk-17-jdk \
-            python3-pip autoconf automake libtool pkg-config \
-            libltdl-dev \
-            zlib1g-dev libncurses5-dev libncursesw5-dev \
-            libtinfo5 cmake libffi-dev libssl-dev
-
-      - name: Install Buildozer and Cython
-        run: |
-          pip install buildozer
-          pip install "cython<3.0.0"
-
-      - name: Build APK with Buildozer
+      - name: Build APK
         run: |
           buildozer -v android debug
 
