@@ -684,10 +684,17 @@ def create_default_db():
     app_dir = get_app_dir()
     print(f'[create_default_db] app_dir = {app_dir!r}')
 
+    # Проверяем, что папка существует и в неё можно писать
     try:
         os.makedirs(app_dir, exist_ok=True)
+        # Пробная запись
+        test_file = os.path.join(app_dir, '.write_test')
+        with open(test_file, 'w') as f:
+            f.write('ok')
+        os.remove(test_file)
+        print(f'[create_default_db] папка доступна для записи')
     except Exception as e:
-        print(f'[create_default_db] не могу создать папку {app_dir}: {e}')
+        print(f'[create_default_db] нет прав на запись в {app_dir!r}: {e}')
         return None
 
     default_path = os.path.join(app_dir, DEFAULT_DB_NAME)
