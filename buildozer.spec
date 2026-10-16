@@ -18,7 +18,7 @@ source.include_patterns = \
     server/**/*
 
 version = 2.0
-requirements = python3,kivy==2.3.0,plyer,openpyxl,pyjnius
+requirements = python3,kivy==2.3.0,plyer,openpyxl
 
 orientation = landscape
 fullscreen = 0
