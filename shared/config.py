@@ -23,41 +23,42 @@ def get_app_dir() -> str:
     - Windows .exe: рядом с .exe.
     - Windows/Linux из исходников: корень проекта.
     """
-    # Android
-    if 'ANDROID_ARGUMENT' in os.environ:
-        # 1. Kivy знает правильную папку — это самый надёжный способ
+    # Android — определяем надёжно
+    if 'ANDROID_ARGUMENT' in os.environ or platform_is_android():
+        # 1. Через jnius — самый надёжный способ
+        try:
+            from jnius import autoclass # type: ignore
+            PythonActivity = autoclass('org.kivy.android.PythonActivity')
+            activity = PythonActivity.mActivity
+            if activity is not None:
+                files_dir = activity.getFilesDir().getAbsolutePath()
+                os.makedirs(files_dir, exist_ok=True)
+                print(f'[get_app_dir] jnius: {files_dir!r}')
+                return files_dir
+        except Exception as e:
+            print(f'[get_app_dir] jnius failed: {e}')
+
+        # 2. Kivy App.user_data_dir
         try:
             from kivy.app import App
             app = App.get_running_app()
             if app is not None:
                 path = app.user_data_dir
                 os.makedirs(path, exist_ok=True)
-                print(f'[get_app_dir] user_data_dir = {path!r}')
+                print(f'[get_app_dir] user_data_dir: {path!r}')
                 return path
         except Exception as e:
             print(f'[get_app_dir] user_data_dir failed: {e}')
 
-        # 2. ANDROID_PRIVATE
+        # 3. ANDROID_PRIVATE
         private = os.environ.get('ANDROID_PRIVATE', '')
         if private:
             try:
                 os.makedirs(private, exist_ok=True)
-                print(f'[get_app_dir] ANDROID_PRIVATE = {private!r}')
+                print(f'[get_app_dir] ANDROID_PRIVATE: {private!r}')
                 return private
             except Exception as e:
                 print(f'[get_app_dir] ANDROID_PRIVATE failed: {e}')
-
-        # 3. jnius — как последний шанс
-        try:
-            from jnius import autoclass # type: ignore
-            PythonActivity = autoclass('org.kivy.android.PythonActivity')
-            ctx = PythonActivity.mActivity
-            path = ctx.getFilesDir().getAbsolutePath()
-            os.makedirs(path, exist_ok=True)
-            print(f'[get_app_dir] jnius = {path!r}')
-            return path
-        except Exception as e:
-            print(f'[get_app_dir] jnius failed: {e}')
 
     # Windows .exe
     if getattr(sys, 'frozen', False):
@@ -65,6 +66,15 @@ def get_app_dir() -> str:
 
     # Из исходников — корень проекта
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def platform_is_android() -> bool:
+    """Проверка, что мы на Android (без импорта kivy.utils на десктопе)."""
+    try:
+        from kivy.utils import platform
+        return platform == 'android'
+    except Exception:
+        return False
 
 def get_backups_dir() -> str:
     """Папка для резервных копий (рядом с текущей БД)."""
