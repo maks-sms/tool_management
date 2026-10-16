@@ -19,8 +19,8 @@ source.include_patterns = \
 
 version = 2.0
 
-#Ключевое для Android
-requirements = hostpython3==3.11.9, python3==3.11.9, kivy==2.2.1, plyer, openpyxl
+# Ключевое для Android
+requirements = python3==3.11.9, hostpython3==3.11.9, kivy==2.1.0, plyer, openpyxl
 p4a.branch = develop
 android.python_version = 3.11
 
