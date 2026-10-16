@@ -9,17 +9,48 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 
-import sys, os, traceback
+# ─── Путь к логу — с учётом Android ───
 
-_LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                         '..', 'crash.log')
+def _get_log_path():
+    """Путь к crash.log с правом на запись.
+
+    - Android: приватная папка приложения.
+    - Desktop: рядом с main.py.
+    """
+    try:
+        if 'ANDROID_ARGUMENT' in os.environ:
+            private = os.environ.get('ANDROID_PRIVATE', '')
+            if private:
+                return os.path.join(private, 'crash.log')
+            try:
+                from jnius import autoclass # type: ignore
+                PythonActivity = autoclass('org.kivy.android.PythonActivity')
+                ctx = PythonActivity.mActivity
+                path = ctx.getFilesDir().getAbsolutePath()
+                return os.path.join(path, 'crash.log')
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    return os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        '..', 'crash.log',
+    )
+
+
+_LOG_PATH = _get_log_path()
+
 
 def _excepthook(exc_type, exc_value, exc_tb):
-    with open(_LOG_PATH, 'a', encoding='utf-8') as f:
-        f.write('=' * 70 + '\n')
-        traceback.print_exception(exc_type, exc_value, exc_tb, file=f)
-        f.flush()
-    # Пишем в stderr напрямую, минуя Kivy-редиректор
+    try:
+        with open(_LOG_PATH, 'a', encoding='utf-8') as f:
+            f.write('=' * 70 + '\n')
+            traceback.print_exception(exc_type, exc_value, exc_tb, file=f)
+            f.flush()
+    except Exception:
+        pass
+
     try:
         orig_stderr = sys.__stderr__
         if orig_stderr:
@@ -30,9 +61,11 @@ def _excepthook(exc_type, exc_value, exc_tb):
         pass
     sys.exit(1)
 
+
 sys.excepthook = _excepthook
 
-# ─── 1. KIVY CONFIG ───
+
+# ─── KIVY CONFIG ───
 from kivy.config import Config
 Config.set('graphics', 'width', '460')
 Config.set('graphics', 'height', '420')
@@ -44,13 +77,42 @@ from kivy.core.window import Window
 Window.clearcolor = (0.96, 0.96, 0.97, 1)
 
 
-# ─── 2. ШРИФТЫ ───
-def _setup_fonts():
-    """Регистрируем единый шрифт AppFont: Roboto + Symbola (эмодзи).
+# ANDROID PERMISSIONS
 
-    AppFont-Regular.ttf и AppFont-Bold.ttf собираются скриптом
-    assets/fonts/build_font.py из Roboto и Symbola.
-    """
+def _request_android_permissions():
+    """Запросить разрешения на Android (для plyer.filechooser и т.п.)."""
+    try:
+        from kivy.utils import platform
+        if platform != 'android':
+            return
+
+        from android.permissions import ( # type: ignore
+            request_permissions, Permission, check_permission,
+        )
+        perms = [
+            Permission.READ_EXTERNAL_STORAGE,
+            Permission.WRITE_EXTERNAL_STORAGE,
+        ]
+        try:
+            perms.append(Permission.READ_MEDIA_IMAGES)
+            perms.append(Permission.READ_MEDIA_VIDEO)
+        except AttributeError:
+            pass
+
+        needed = [p for p in perms if not check_permission(p)]
+        if needed:
+            print(f'[permissions] запрашиваем: {needed}')
+            request_permissions(needed)
+        else:
+            print('[permissions] все разрешения уже выданы')
+    except Exception as e:
+        print(f'[permissions] ошибка: {e}')
+
+
+# ─── ШРИФТЫ ───
+
+def _setup_fonts():
+    """Регистрируем единый шрифт AppFont: Roboto + Symbola (эмодзи)."""
     try:
         from kivy.core.text import LabelBase
     except Exception as e:
@@ -68,7 +130,6 @@ def _setup_fonts():
     if not os.path.exists(regular):
         print(f'[fonts] нет {regular}')
         print('[fonts] Соберите шрифт: python assets/fonts/build_font.py')
-        # Fallback: Symbola, чтобы приложение запустилось хоть как-то
         symbola = os.path.join(assets, 'Symbola.ttf')
         if os.path.exists(symbola):
             LabelBase.register(
@@ -97,14 +158,15 @@ def _setup_fonts():
 _setup_fonts()
 
 
-# ─── 3. ИМПОРТЫ KIVY ───
+# ─── ИМПОРТЫ KIVY ───
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.screenmanager import ScreenManager, Screen, NoTransition
 
 
-# ─── 4. ХЕЛПЕР ЦЕНТРИРОВАНИЯ ───
+# ─── ХЕЛПЕР ЦЕНТРИРОВАНИЯ ───
+
 def center_window(w, h):
     """Центрирование окна — только на desktop. На Android no-op."""
     try:
@@ -136,7 +198,8 @@ def center_window(w, h):
         print(f'[center_window] {e}')
 
 
-# ─── 5. КОРНЕВОЕ ПРИЛОЖЕНИЕ ───
+# ─── КОРНЕВОЕ ПРИЛОЖЕНИЕ ───
+
 class BootstrapApp(App):
     """
     Единое Kivy-приложение. Последовательность экранов:
@@ -160,6 +223,9 @@ class BootstrapApp(App):
         from frontend.theme import C
         Window.clearcolor = C['bg']
 
+        # Запрос разрешений — откладываем, чтобы Activity успела стартовать
+        Clock.schedule_once(lambda dt: _request_android_permissions(), 0.5)
+
         root = BoxLayout(orientation='vertical')
         self.sm = ScreenManager(transition=NoTransition())
         root.add_widget(self.sm)
@@ -168,6 +234,7 @@ class BootstrapApp(App):
         return root
 
     # ─── Переход между экранами ───
+
     def go_to(self, widget, size=None):
         for s in list(self.sm.screens):
             self.sm.remove_widget(s)
@@ -179,6 +246,7 @@ class BootstrapApp(App):
             center_window(*size)
 
     # ─── Шаги ───
+
     def _step_start(self, dt):
         from frontend.config import get_db_path
         self.db_path = get_db_path()
@@ -226,6 +294,15 @@ class BootstrapApp(App):
         self._step_license()
 
     def _step_license(self):
+        # На Android лицензия не требуется — HW-ID нестабилен между прошивками
+        try:
+            from kivy.utils import platform
+            if platform == 'android':
+                self._step_auth()
+                return
+        except Exception:
+            pass
+
         from shared.services.licensing.license_manager import is_activated
         if is_activated():
             self._step_auth()
