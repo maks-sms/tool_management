@@ -5,7 +5,6 @@ package.domain = org.solodovnikov
 
 source.dir = .
 source.include_exts = py,png,jpg,jpeg,kv,atlas,ttf,json,db,csv
-
 source.include_patterns = \
     frontend/*, \
     frontend/assets/*, \
@@ -19,10 +18,10 @@ source.include_patterns = \
 
 version = 2.0
 
-# Ключевое для Android
 requirements = python3==3.11.9, hostpython3==3.11.9, kivy==2.1.0, plyer, openpyxl
-p4a.branch = develop
-android.python_version = 3.11
+
+# ─── Ключевое: стабильная ветка python-for-android ───
+p4a.branch = v2023.09.10
 
 orientation = landscape
 fullscreen = 0
