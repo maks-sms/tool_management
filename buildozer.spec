@@ -22,7 +22,7 @@ version = 2.0
 # ─── Ключевое: явно указываем версию Python и Kivy ───
 # Мы используем Python 3.11, так как он стабильно поддерживается p4a.
 # Kivy 2.1.0 не тянет за собой проблемный libthorvg.
-requirements = python3==3.11.9, hostpython3==3.11.9, kivy==2.1.0, plyer, openpyxl
+requirements = python3==3.10.11, hostpython3==3.10.11, kivy==2.1.0, plyer, openpyxl
 
 # ─── Ключевое: используем существующий стабильный тег p4a ───
 # Тег v2023.09.16 — последняя стабильная версия на Python 3.10/3.11 без libthorvg.
