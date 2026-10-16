@@ -6,12 +6,9 @@ package.domain = org.solodovnikov
 source.dir = .
 source.include_exts = py,png,jpg,jpeg,kv,atlas,ttf,json,db,csv
 
-source.include_patterns = \
+source.include_patterns = main.py, \
     frontend/*, \
-    frontend/assets/*, \
-    frontend/assets/fonts/*, \
-    frontend/views/*, \
-    frontend/views/**/*, \
+    frontend/**/*, \
     shared/*, \
     shared/**/*, \
     server/*, \
@@ -19,13 +16,8 @@ source.include_patterns = \
 
 version = 2.0
 
-# ─── Ключевое: явно указываем версию Python и Kivy ───
-# Мы используем Python 3.11, так как он стабильно поддерживается p4a.
-# Kivy 2.1.0 не тянет за собой проблемный libthorvg.
 requirements = python3==3.10.11, hostpython3==3.10.11, kivy==2.1.0, plyer, openpyxl
 
-# ─── Ключевое: используем существующий стабильный тег p4a ───
-# Тег v2023.09.16 — последняя стабильная версия на Python 3.10/3.11 без libthorvg.
 p4a.branch = v2023.09.16
 
 orientation = landscape
