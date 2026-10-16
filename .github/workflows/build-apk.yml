@@ -18,13 +18,6 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Verify Python version
-        run: |
-          which python
-          python --version
-          which pip
-          pip --version
-
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -41,11 +34,10 @@ jobs:
           pip install buildozer
           pip install "cython==0.29.36"
 
-      - name: Verify buildozer
+      - name: Clean buildozer cache
         run: |
-          which buildozer
-          buildozer --version
-          python -c "import Cython; print('Cython', Cython.__version__)"
+          rm -rf .buildozer bin
+          rm -rf ~/.buildozer
 
       - name: Build APK
         run: |
