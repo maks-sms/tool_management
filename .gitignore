@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE
+.vscode/
+.idea/
+
+# Buildozer
+build/
+dist/
+bin/
+.buildozer/
+
+# PyInstaller
+*.spec
+!buildozer.spec
+
+# Данные
+*.db
+*.db-shm
+*.db-wal
+*.db.broken-*
+backups/
+chat_files/
+logs/
+
+# Конфиги
+license.json
+warehouse_config.json
+secret.key
+
+# Мусор
+*.log
+crash.log
+Новый текстовый документ.txt
