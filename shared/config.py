@@ -23,25 +23,43 @@ def get_app_dir() -> str:
     - Windows .exe: рядом с .exe.
     - Windows/Linux из исходников: корень проекта.
     """
-    # Android: Kivy выставляет ANDROID_ARGUMENT и ANDROID_PRIVATE
+    # Android
     if 'ANDROID_ARGUMENT' in os.environ:
+        # 1. Kivy знает правильную папку — это самый надёжный способ
+        try:
+            from kivy.app import App
+            app = App.get_running_app()
+            if app is not None:
+                path = app.user_data_dir
+                os.makedirs(path, exist_ok=True)
+                print(f'[get_app_dir] user_data_dir = {path!r}')
+                return path
+        except Exception as e:
+            print(f'[get_app_dir] user_data_dir failed: {e}')
+
+        # 2. ANDROID_PRIVATE
         private = os.environ.get('ANDROID_PRIVATE', '')
         if private:
-            # Приватная папка, доступна для записи
-            os.makedirs(private, exist_ok=True)
-            return private
-        # fallback — попробуем через jnius
+            try:
+                os.makedirs(private, exist_ok=True)
+                print(f'[get_app_dir] ANDROID_PRIVATE = {private!r}')
+                return private
+            except Exception as e:
+                print(f'[get_app_dir] ANDROID_PRIVATE failed: {e}')
+
+        # 3. jnius — как последний шанс
         try:
             from jnius import autoclass # type: ignore
             PythonActivity = autoclass('org.kivy.android.PythonActivity')
             ctx = PythonActivity.mActivity
             path = ctx.getFilesDir().getAbsolutePath()
             os.makedirs(path, exist_ok=True)
+            print(f'[get_app_dir] jnius = {path!r}')
             return path
-        except Exception:
-            pass
+        except Exception as e:
+            print(f'[get_app_dir] jnius failed: {e}')
 
-    # Windows .exe (PyInstaller)
+    # Windows .exe
     if getattr(sys, 'frozen', False):
         return os.path.dirname(sys.executable)
 
