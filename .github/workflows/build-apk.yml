@@ -36,6 +36,7 @@ jobs:
 
       - name: Clean buildozer cache
         run: |
+          # Удаляем старые артефакты сборки, чтобы p4a переключился на новый тег
           rm -rf .buildozer bin
           rm -rf ~/.buildozer
 
