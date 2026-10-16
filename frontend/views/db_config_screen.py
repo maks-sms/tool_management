@@ -1,13 +1,7 @@
 # frontend/views/db_config_screen.py
-"""Выбор пути к БД. Виджет без своего App.
-
-Умеет:
-  - показать текущий путь к БД,
-  - создать новую БД в папке приложения,
-  - выбрать существующий файл БД через системный диалог,
-  - показать ошибку, если ничего не получилось.
-"""
+"""Выбор пути к БД. Виджет без своего App."""
 import os
+import shutil
 
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
@@ -134,7 +128,7 @@ class DBConfigScreen(BoxLayout):
             app_dir = get_app_dir()
             default_path = os.path.join(app_dir, DEFAULT_DB_NAME)
             self.path_inp.text = default_path
-            self.info_lbl.text = f'Путь по умолчанию: {default_path}'
+            self.info_lbl.text = f'Путь: {default_path}'
         except Exception as e:
             self._show_error(f'Ошибка: {e}')
 
@@ -177,15 +171,59 @@ class DBConfigScreen(BoxLayout):
             self._show_error(f'Ошибка выбора файла:\n{e}')
 
     def _on_android_file_selected(self, paths):
-        """Callback от plyer на Android."""
+        """Callback от plyer на Android.
+
+        plyer возвращает путь вида /storage/emulated/0/Download/file.db.
+        Но SQLite НЕ МОЖЕТ писать туда — надо скопировать файл
+        в приватную папку приложения.
+        """
         print(f'[db_config] on_android_file_selected: {paths!r}')
+
         if not paths:
             self.info_lbl.text = 'Файл не выбран'
             return
-        path = paths[0]
-        print(f'[db_config] выбран путь: {path!r}')
-        self.path_inp.text = path
-        self.info_lbl.text = f'Выбран: {os.path.basename(path)}'
+
+        src_path = paths[0]
+        print(f'[db_config] выбран путь: {src_path!r}')
+
+        # content:// URI — не поддерживается
+        if src_path.startswith('content://'):
+            self._show_error(
+                'Android вернул content:// URI.\n'
+                'Попробуйте выбрать файл через «Мои файлы»,\n'
+                'а не через «Загрузки».'
+            )
+            return
+
+        # Копируем в приватную папку приложения
+        try:
+            from shared.config import get_app_dir, DEFAULT_DB_NAME
+
+            app_dir = get_app_dir()
+            dst_path = os.path.join(app_dir, DEFAULT_DB_NAME)
+            print(f'[db_config] копирую {src_path!r} → {dst_path!r}')
+
+            # Если файл уже там — не копируем
+            if os.path.abspath(src_path) != os.path.abspath(dst_path):
+                shutil.copy2(src_path, dst_path)
+
+            if os.path.exists(dst_path):
+                size = os.path.getsize(dst_path)
+                print(f'[db_config] скопировано, размер = {size} байт')
+                self.path_inp.text = dst_path
+                self.info_lbl.text = (
+                    f'Импортирована БД: {os.path.basename(dst_path)} '
+                    f'({size} байт)'
+                )
+            else:
+                self._show_error('Копирование не удалось — файл не появился.')
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self._show_error(
+                f'Не удалось скопировать файл:\n{e}\n\n'
+                f'Источник: {src_path}'
+            )
 
     # ─── Создать новую БД ───
 
@@ -218,7 +256,6 @@ class DBConfigScreen(BoxLayout):
         p = self.path_inp.text.strip()
 
         if not p:
-            # Поле пустое → создаём БД по умолчанию
             try:
                 new_path = create_default_db()
             except Exception as e:
