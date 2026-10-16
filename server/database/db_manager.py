@@ -680,13 +680,31 @@ def update_database_schema(db_path):
 
 
 def create_default_db():
-    """Создать базу данных по умолчанию (рядом с приложением)."""
+    """Создать базу данных по умолчанию (в папке приложения)."""
     app_dir = get_app_dir()
-    default_path = os.path.join(app_dir, DEFAULT_DB_NAME)
+    print(f'[create_default_db] app_dir = {app_dir!r}')
 
-    if init_db(default_path):
-        save_db_path(default_path)
-        return default_path
+    try:
+        os.makedirs(app_dir, exist_ok=True)
+    except Exception as e:
+        print(f'[create_default_db] не могу создать папку {app_dir}: {e}')
+        return None
+
+    default_path = os.path.join(app_dir, DEFAULT_DB_NAME)
+    print(f'[create_default_db] default_path = {default_path!r}')
+
+    try:
+        if init_db(default_path):
+            save_db_path(default_path)
+            print(f'[create_default_db] OK: {default_path}')
+            return default_path
+        else:
+            print(f'[create_default_db] init_db вернул False')
+    except Exception as e:
+        import traceback
+        print(f'[create_default_db] init_db упал: {e}')
+        traceback.print_exc()
+
     return None
 
 def _migrate_user_permissions(cur):
