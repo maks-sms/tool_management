@@ -1,33 +1,32 @@
 # shared/config.py
 """
 Общий конфиг для клиента и сервера.
-Здесь живёт то, что нужно обоим:
-  - путь к БД (get_db_path / save_db_path)
-  - префиксы локаций
-  - роли
-  - лимиты
-  - базовые цвета (используются и в вебе)
-Никаких импортов из client_desktop.* или server.* тут быть не должно!
 """
 import os
 import json
 import sys
 
 
-# Пути
+# ─── Пути ───
 
 def get_app_dir() -> str:
     """Папка приложения.
 
-    - Android: приватная папка приложения (доступна для записи).
+    - Android: приватная папка приложения (доступна для записи БЕЗ разрешений).
     - Windows .exe: рядом с .exe.
     - Windows/Linux из исходников: корень проекта.
     """
-    # Android — определяем надёжно
-    if 'ANDROID_ARGUMENT' in os.environ or platform_is_android():
-        # 1. Через jnius — самый надёжный способ
+    # Определяем, что мы на Android
+    try:
+        from kivy.utils import platform
+        is_android = (platform == 'android')
+    except Exception:
+        is_android = ('ANDROID_ARGUMENT' in os.environ)
+
+    if is_android:
+        # 1. jnius — самый надёжный способ
         try:
-            from jnius import autoclass # type: ignore
+            from jnius import autoclass  # type: ignore
             PythonActivity = autoclass('org.kivy.android.PythonActivity')
             activity = PythonActivity.mActivity
             if activity is not None:
@@ -60,21 +59,13 @@ def get_app_dir() -> str:
             except Exception as e:
                 print(f'[get_app_dir] ANDROID_PRIVATE failed: {e}')
 
-    # Windows .exe
+    # Windows .exe (PyInstaller)
     if getattr(sys, 'frozen', False):
         return os.path.dirname(sys.executable)
 
     # Из исходников — корень проекта
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-
-def platform_is_android() -> bool:
-    """Проверка, что мы на Android (без импорта kivy.utils на десктопе)."""
-    try:
-        from kivy.utils import platform
-        return platform == 'android'
-    except Exception:
-        return False
 
 def get_backups_dir() -> str:
     """Папка для резервных копий (рядом с текущей БД)."""
@@ -92,7 +83,7 @@ COMPANY = "ООО 'Солодовников'"
 APP_NAME = f"ToolManagement {VERSION}"
 
 
-# Домен
+# ─── Домен ───
 
 LOCATION_WAREHOUSE = "Склад"
 LOCATION_RESERVE = "Резерв"
@@ -110,7 +101,7 @@ REFRESH_INTERVAL_DEFAULT = 60_000
 REFRESH_INTERVAL_OPTIONS = [30_000, 60_000, 120_000]
 
 
-# JSON-конфиг (общий файл!)
+# ─── JSON-конфиг ───
 
 def _load_config() -> dict:
     if os.path.exists(CONFIG_FILE):
@@ -168,7 +159,8 @@ def save_column_alignment(tree_name: str, alignments: dict) -> None:
     _save_config(config)
 
 
-# Опционально: хранение пароля
+# ─── Пароль (опционально) ───
+
 def get_remember_password() -> bool:
     return _load_config().get('remember_password', False)
 
