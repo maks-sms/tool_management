@@ -16,6 +16,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Show environment
+        run: |
+          python --version
+          pip --version
+          buildozer --version
+
       - name: Build APK
         run: |
           buildozer -v android debug
